@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js - Neve com Luzes Coloridas</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #info {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            color: white;
+            padding: 10px;
+            font-family: sans-serif;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Three.js - Neve com Luzes Coloridas</div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.144.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        let scene, camera, renderer, snowParticles, tree, controls, ornaments = [], star;
+        let isBlinking = false; // Controle para ativar/desativar piscagem
+        let blinkInterval; // Armazena o intervalo da piscagem
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f4140);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(20, 20, 20);
+            camera.lookAt(0, 10, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 10, 0);
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = -0.7;
+            controls.update();
+
+            // Luz Ambiente
+            scene.add(new THREE.AmbientLight(0x404040));
+
+            // Luz Direcional
+            const dirLight = new THREE.DirectionalLight(0xf9ff9b, 1);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Chão Escuro
+            const groundGeometry = new THREE.PlaneGeometry(5000, 5000);
+            const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0b3d02 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+
+            // Partículas de Neve
+            const snowGeometry = new THREE.BufferGeometry();
+            const snowCount = 200000;
+            const snowPositions = [];
+            for (let i = 0; i < snowCount; i++) {
+                snowPositions.push(
+                    (Math.random() - 0.5) * 5000,
+                    Math.random() * 50 + 30,
+                    (Math.random() - 0.5) * 190
+                );
+            }
+            snowGeometry.setAttribute('position', new THREE.Float32BufferAttribute(snowPositions, 3));
+            const snowMaterial = new THREE.PointsMaterial({ color: 0xFFFFFF, size: 0.5, opacity: 0.7, transparent: true });
+            snowParticles = new THREE.Points(snowGeometry, snowMaterial);
+            scene.add(snowParticles);
+
+            // Árvore de Natal
+            tree = createChristmasTree(8);
+            scene.add(tree);
+
+            window.addEventListener('keydown', (event) => {
+                if (event.code === 'Space') {
+                    isBlinking = !isBlinking; // Alterna entre ligar/desligar
+
+                    if (isBlinking) {
+                        startBlinking(); // Inicia a piscagem
+                    } else {
+                        stopBlinking(); // Para a piscagem
+                    }
+                }
+            });
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function createChristmasTree(layers) {
+            const tree = new THREE.Group();
+            const coneMaterial = new THREE.MeshStandardMaterial({ color: 0x0d492c });
+
+            for (let i = 0; i < layers; i++) {
+                const radius = 1 + i;
+                const coneGeometry = new THREE.ConeGeometry(radius * 0.95, radius * 1.25, 32);
+                const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+                cone.position.y = (layers - i) * 1.5 + layers * 0.6;
+                tree.add(cone);
+
+                addOrnaments(tree, cone.position.y, radius * 0.95);
+            }
+
+            const trunkGeometry = new THREE.CylinderGeometry(1, 1, layers, 32);
+            const trunk = new THREE.Mesh(trunkGeometry, coneMaterial);
+            trunk.position.y = layers / 2;
+            tree.add(trunk);
+
+            const starGeometry = new THREE.IcosahedronGeometry(0.5, 1);
+            const starMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 1 });
+            star = new THREE.Mesh(starGeometry, starMaterial);  // Armazenamos a referência da estrela
+            star.position.set(0, (layers + 1) * 1.5 + layers * 0.6, 0);
+            tree.add(star);
+
+            return tree;
+        }
+
+        function addOrnaments(tree, height, layerRadius) {
+            const ornamentColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff, 0xffffff];
+            const ornamentCount = Math.max(6, Math.round(layerRadius * 8)); // Número de enfeites aumenta com o raio
+            const angleStep = (2 * Math.PI) / ornamentCount; // Divisão uniforme ao longo do círculo
+
+            for (let i = 0; i < ornamentCount; i++) {
+                const angle = i * angleStep; // Ângulo atual para cada enfeite
+                const x = layerRadius * Math.cos(angle); // Coordenada X
+                const z = layerRadius * Math.sin(angle); // Coordenada Z
+
+                // Corrigir altura do enfeite para se ajustar à superfície inclinada
+                const offsetY = -Math.tan(Math.PI / 6) * layerRadius; // Inclinação do cone ajustada (ângulo de 30 graus)
+
+                // Criar enfeite
+                const sphereGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+                const sphereMaterial = new THREE.MeshStandardMaterial({
+                    color: ornamentColors[Math.floor(Math.random() * ornamentColors.length)],
+                    emissive: ornamentColors[Math.floor(Math.random() * ornamentColors.length)],
+                    emissiveIntensity: 0.7
+                });
+                const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+
+                // Ajustar posição do enfeite para "grudar" na superfície cônica
+                sphere.position.set(x, height + offsetY, z);
+                tree.add(sphere);
+                ornaments.push(sphere);
+            }
+        }
+
+        // Função para gerar uma cor aleatória
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Função para iniciar a piscagem
+        function startBlinking() {
+            blinkInterval = setInterval(() => {
+                ornaments.forEach((ornament) => {
+                    // Alterna aleatoriamente entre cores brilhantes e apagadas
+                    ornament.material.emissive.setHex(
+                        Math.random() > 0.5 ? 0x000000 : parseInt(getRandomColor().replace('#', '0x'))
+                    );
+                });
+
+                // Altera a cor da estrela
+                const randomColor = getRandomColor();
+                star.material.emissive.setHex(parseInt(randomColor.replace('#', '0x')));
+            }, 500); // Troca as cores a cada 500ms
+        }
+
+        // Função para parar a piscagem
+        function stopBlinking() {
+            clearInterval(blinkInterval); // Para o intervalo
+            // Reseta as emissões para as cores originais
+            ornaments.forEach((ornament) => {
+                ornament.material.emissive.setHex(ornament.material.color.getHex());
+            });
+
+            // Reseta a cor da estrela
+            star.material.emissive.setHex(0xffff00);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const positions = snowParticles.geometry.attributes.position.array;
+            for (let i = 1; i < positions.length; i += 3) {
+                positions[i] -= 0.02;
+                if (positions[i] < 0) positions[i] = 0;
+            }
+            snowParticles.geometry.attributes.position.needsUpdate = true;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>
