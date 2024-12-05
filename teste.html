@@ -88,6 +88,10 @@
 
             // Árvore de Natal
             tree = createChristmasTree(8);
+            addPresentsAroundTree(tree, 10); // Adiciona 10 presentes
+            addCandyCanes(tree, 8); // Adiciona 8 bengalas doces
+            addGarlands(tree, 8); // Adiciona guirlandas a cada camada
+            addSanta(tree);
             scene.add(tree);
 
             window.addEventListener('keydown', (event) => {
@@ -171,6 +175,147 @@
             }
             return color;
         }
+
+        function addPresentsAroundTree(tree, numberOfPresents = 10) {
+        const presentsGroup = new THREE.Group();
+        const presentColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
+        
+        for (let i = 0; i < numberOfPresents; i++) {
+            const size = Math.random() * 0.5 + 0.5; // Tamanho aleatório para os presentes
+            const presentGeometry = new THREE.BoxGeometry(size, size, size);
+            const presentMaterial = new THREE.MeshStandardMaterial({
+                color: presentColors[Math.floor(Math.random() * presentColors.length)],
+                emissive: 0x000000,
+            });
+            
+            const present = new THREE.Mesh(presentGeometry, presentMaterial);
+
+            // Posiciona os presentes ao redor da árvore
+            const angle = (i / numberOfPresents) * Math.PI * 2; // Divide uniformemente
+            const radius = 6; // Distância da árvore
+            present.position.set(
+                radius * Math.cos(angle),
+                size / 2,
+                radius * Math.sin(angle)
+            );
+            
+            presentsGroup.add(present);
+        }
+
+        // Adicionar os presentes ao lado da árvore
+        tree.add(presentsGroup);
+    }
+
+    function addSanta(scene) {
+        const santaGroup = new THREE.Group();
+
+        // Corpo do Papai Noel (Cilindro Vermelho)
+        const bodyGeometry = new THREE.CylinderGeometry(1.5, 2, 4, 32);
+        const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 2;
+        santaGroup.add(body);
+
+        // Cabeça do Papai Noel (Esfera Bege)
+        const headGeometry = new THREE.SphereGeometry(1, 32, 32);
+        const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffcc99 });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 5;
+        santaGroup.add(head);
+
+        // Chapéu (Cone Vermelho)
+        const hatGeometry = new THREE.ConeGeometry(1.2, 2, 32);
+        const hatMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const hat = new THREE.Mesh(hatGeometry, hatMaterial);
+        hat.position.y = 6.5;
+        santaGroup.add(hat);
+
+        // Pompom do Chapéu (Esfera Branca)
+        const pompomGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+        const pompomMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const pompom = new THREE.Mesh(pompomGeometry, pompomMaterial);
+        pompom.position.set(0, 7.5, 0);
+        santaGroup.add(pompom);
+
+        // Braços (Cilindros Vermelhos)
+        const armGeometry = new THREE.CylinderGeometry(0.4, 0.4, 2, 32);
+        const armMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.rotation.z = Math.PI / 4;
+        leftArm.position.set(-2, 4, 0);
+
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.rotation.z = -Math.PI / 4;
+        rightArm.position.set(2, 4, 0);
+
+        santaGroup.add(leftArm);
+        santaGroup.add(rightArm);
+
+        // Botões (Pequenas Esferas Pretas)
+        const buttonGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+        const buttonMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+        for (let i = 0; i < 3; i++) {
+            const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
+            button.position.set(0, 4 - i * 0.8, 1.9);
+            santaGroup.add(button);
+        }
+
+        // Posicionar o Papai Noel longe da árvore
+        santaGroup.position.set(-12, 0, 0);
+
+        // Adicionar o Papai Noel na cena
+        scene.add(santaGroup);
+    }
+
+    function addCandyCanes(tree, numberOfCanes = 10) {
+        const canesGroup = new THREE.Group();
+
+        for (let i = 0; i < numberOfCanes; i++) {
+            const caneGeometry = new THREE.CylinderGeometry(0.1, 0.1, 2, 32);
+            const caneMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            const cane = new THREE.Mesh(caneGeometry, caneMaterial);
+
+            // Adiciona um arco na parte superior da bengala
+            const arcGeometry = new THREE.TorusGeometry(0.5, 0.1, 16, 100, Math.PI);
+            const arc = new THREE.Mesh(arcGeometry, caneMaterial);
+            arc.rotation.x = Math.PI / 2;
+            arc.position.y = 1; // Posição no topo da bengala
+
+            cane.add(arc);
+
+            // Posiciona as bengalas ao redor da árvore
+            const angle = (i / numberOfCanes) * Math.PI * 2; // Divide uniformemente
+            const radius = 5; // Distância da árvore
+            cane.position.set(
+                radius * Math.cos(angle),
+                1,
+                radius * Math.sin(angle)
+            );
+
+            canesGroup.add(cane);
+        }
+
+        // Adiciona as bengalas à cena
+        tree.add(canesGroup);
+    }
+
+    function addGarlands(tree, layers) {
+        for (let i = 0; i < layers; i++) {
+            const radius = (1 + i) * 0.95; // Largura do cone
+            const height = (layers - i) * 1.5 + layers * 0.6; // Altura do cone
+
+            const garlandGeometry = new THREE.TorusGeometry(radius, 0.05, 8, 100);
+            const garlandMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+            const garland = new THREE.Mesh(garlandGeometry, garlandMaterial);
+
+            garland.rotation.x = Math.PI / 2; // Fica na horizontal
+            garland.position.y = height - 0.5; // Ajusta para o nível da camada
+
+            tree.add(garland);
+        }
+    }
 
         // Função para iniciar a piscagem
         function startBlinking() {
